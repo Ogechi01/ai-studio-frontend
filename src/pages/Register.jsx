@@ -1,70 +1,96 @@
 import { useState } from "react";
-import api from "../api/axios";
+import api, { errorMessage } from "../api/axios";
+import Alert from "../components/Alert";
+import Spinner from "../components/Spinner";
 
-function Register({ switchToLogin }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+const inputClass =
+  "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200";
 
-  const handleRegister = async () => {
-    if (password !== confirm) {
-      alert("Passwords do not match ❌");
+function Register({ onLogin, switchToLogin }) {
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
 
+    if (form.password !== form.confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await api.post("/auth/register", { email, password });
-      console.log(res.data);
-      alert("Registration Successful 🚀");
-      switchToLogin(); // go to login automatically
+      const res = await api.post("/auth/register", {
+        name: form.name || undefined,
+        email: form.email,
+        password: form.password,
+      });
+
+      // The backend logs the new user straight in
+      onLogin(res.data.token);
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Registration Failed ❌");
+      setError(errorMessage(err, "Registration failed. Please try again."));
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg w-96">
-      <h2 className="text-2xl font-bold mb-4">Register</h2>
+    <form onSubmit={handleRegister} className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
+      <h2 className="mb-1 text-2xl font-bold text-gray-900">Create your account</h2>
+      <p className="mb-6 text-sm text-gray-500">Start turning stories into scenes</p>
 
-      <input
-        className="border p-2 w-full mb-3"
-        placeholder="Email"
-        type="email"
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      {error && (
+        <div className="mb-4">
+          <Alert>{error}</Alert>
+        </div>
+      )}
 
-      <input
-        className="border p-2 w-full mb-3"
-        placeholder="Password"
-        type="password"
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      <label htmlFor="reg-name" className="mb-1 block text-sm font-medium text-gray-700">
+        Name <span className="font-normal text-gray-400">(optional)</span>
+      </label>
+      <input id="reg-name" name="name" className={`${inputClass} mb-4`} autoComplete="name" value={form.name} onChange={handleChange} />
 
-      <input
-        className="border p-2 w-full mb-3"
-        placeholder="Confirm Password"
-        type="password"
-        onChange={(e) => setConfirm(e.target.value)}
-      />
+      <label htmlFor="reg-email" className="mb-1 block text-sm font-medium text-gray-700">
+        Email
+      </label>
+      <input id="reg-email" name="email" type="email" className={`${inputClass} mb-4`} autoComplete="email" value={form.email} onChange={handleChange} required />
+
+      <label htmlFor="reg-password" className="mb-1 block text-sm font-medium text-gray-700">
+        Password
+      </label>
+      <input id="reg-password" name="password" type="password" className={`${inputClass} mb-4`} autoComplete="new-password" minLength={6} value={form.password} onChange={handleChange} required />
+
+      <label htmlFor="reg-confirm" className="mb-1 block text-sm font-medium text-gray-700">
+        Confirm password
+      </label>
+      <input id="reg-confirm" name="confirm" type="password" className={`${inputClass} mb-6`} autoComplete="new-password" value={form.confirm} onChange={handleChange} required />
 
       <button
-        className="bg-green-600 text-white w-full p-2 rounded mb-3"
-        onClick={handleRegister}
+        type="submit"
+        disabled={loading}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 p-2.5 font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
       >
-        Register
+        {loading && <Spinner />}
+        {loading ? "Creating account..." : "Create account"}
       </button>
 
-      <p className="text-center text-gray-500">
+      <p className="mt-4 text-center text-sm text-gray-500">
         Already have an account?{" "}
-        <span
-          className="text-blue-500 cursor-pointer"
-          onClick={switchToLogin}
-        >
-          Login
-        </span>
+        <button type="button" className="font-medium text-violet-600 hover:underline" onClick={switchToLogin}>
+          Log in
+        </button>
       </p>
-    </div>
+    </form>
   );
 }
 

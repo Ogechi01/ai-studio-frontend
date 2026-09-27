@@ -1,59 +1,85 @@
 import { useState } from "react";
-import api from "../api/axios";
+import api, { errorMessage } from "../api/axios";
+import Alert from "../components/Alert";
+import Spinner from "../components/Spinner";
 
-function Login({ setToken, switchToRegister }) {
+const inputClass =
+  "w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200";
+
+function Login({ onLogin, sessionExpired, switchToRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
     try {
       const res = await api.post("/auth/login", { email, password });
-
-      localStorage.setItem("token", res.data.token);
-      setToken(res.data.token);
-
-      alert("Login Successful 🚀");
+      onLogin(res.data.token);
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Login Failed ❌");
+      setError(errorMessage(err, "Login failed. Please try again."));
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg w-96">
-      <h2 className="text-2xl font-bold mb-4">Login</h2>
+    <form onSubmit={handleLogin} className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
+      <h2 className="mb-1 text-2xl font-bold text-gray-900">Welcome back</h2>
+      <p className="mb-6 text-sm text-gray-500">Log in to your studio</p>
 
+      <div className="mb-4 space-y-3">
+        {sessionExpired && !error && (
+          <Alert type="info">Your session expired. Please log in again.</Alert>
+        )}
+        <Alert>{error}</Alert>
+      </div>
+
+      <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-gray-700">
+        Email
+      </label>
       <input
-        className="border p-2 w-full mb-3"
-        placeholder="Email"
+        id="login-email"
+        className={`${inputClass} mb-4`}
         type="email"
+        autoComplete="email"
+        value={email}
         onChange={(e) => setEmail(e.target.value)}
+        required
       />
 
+      <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-gray-700">
+        Password
+      </label>
       <input
-        className="border p-2 w-full mb-3"
-        placeholder="Password"
+        id="login-password"
+        className={`${inputClass} mb-6`}
         type="password"
+        autoComplete="current-password"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
+        required
       />
 
       <button
-        className="bg-blue-600 text-white w-full p-2 rounded"
-        onClick={handleLogin}
+        type="submit"
+        disabled={loading}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 p-2.5 font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
       >
-        Login
+        {loading && <Spinner />}
+        {loading ? "Logging in..." : "Log in"}
       </button>
 
-      <p className="text-center text-gray-500 mt-3">
+      <p className="mt-4 text-center text-sm text-gray-500">
         Don't have an account?{" "}
-        <span
-          className="text-blue-500 cursor-pointer"
-          onClick={switchToRegister}
-        >
+        <button type="button" className="font-medium text-violet-600 hover:underline" onClick={switchToRegister}>
           Register
-        </span>
+        </button>
       </p>
-    </div>
+    </form>
   );
 }
 
